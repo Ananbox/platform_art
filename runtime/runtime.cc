@@ -690,6 +690,8 @@ void Runtime::EndThreadBirth() REQUIRES(Locks::runtime_shutdown_lock_) {
 // Do zygote-mode-only initialization.
 bool Runtime::InitZygote() {
 #ifdef __linux__
+    // HACKED: ananbox just bypass those mount point
+#if 0
   // zygote goes into its own process group
   setpgid(0, 0);
 
@@ -718,7 +720,7 @@ bool Runtime::InitZygote() {
       return false;
     }
   }
-
+#endif
   return true;
 #else
   UNIMPLEMENTED(FATAL);
