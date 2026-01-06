@@ -398,6 +398,10 @@ int64_t GetFileSizeBytes(const std::string& filename);
 // Sleep forever and never come back.
 NO_RETURN void SleepForever();
 
+#if defined(__linux__)
+bool IsKernelVersionAtLeast(int reqd_major, int reqd_minor);
+#endif
+
 inline void FlushInstructionCache(char* begin, char* end) {
   // Only use __builtin___clear_cache with Clang or with GCC >= 4.3.0
   // (__builtin___clear_cache was introduced in GCC 4.3.0).

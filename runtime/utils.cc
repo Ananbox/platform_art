@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <memory>
@@ -1101,6 +1102,20 @@ static bool PcIsWithinQuickCode(ArtMethod* method, uintptr_t pc) NO_THREAD_SAFET
   }
   uintptr_t code_size = reinterpret_cast<const OatQuickMethodHeader*>(code)[-1].code_size_;
   return code <= pc && pc <= (code + code_size);
+}
+
+bool IsKernelVersionAtLeast(int reqd_major, int reqd_minor) {
+  static auto version = []() -> std::pair<int, int> {
+    struct utsname uts;
+    int res, major, minor;
+    res = uname(&uts);
+    CHECK_EQ(res, 0);
+    CHECK_EQ(strcmp(uts.sysname, "Linux"), 0);
+    res = sscanf(uts.release, "%d.%d:", &major, &minor);
+    CHECK_EQ(res, 2);
+    return std::make_pair(major, minor);
+  }();
+  return version >= std::make_pair(reqd_major, reqd_minor);
 }
 #endif
 

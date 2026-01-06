@@ -44,6 +44,10 @@
 #define MAP_ANONYMOUS MAP_ANON
 #endif
 
+#ifndef MAP_FIXED_NOREPLACE
+#define MAP_FIXED_NOREPLACE 0x100000
+#endif
+
 namespace art {
 
 static std::ostream& operator<<(
@@ -330,13 +334,29 @@ MemMap* MemMap::MapAnonymous(const char* name,
   // We need to store and potentially set an error number for pretty printing of errors
   int saved_errno = 0;
 
-  void* actual = MapInternal(expected_ptr,
-                             page_aligned_byte_count,
-                             prot,
-                             flags,
-                             fd.get(),
-                             0,
-                             low_4gb);
+  void *actual = nullptr;
+
+#if defined(__linux__)
+  if ((flags & MAP_FIXED) == 0 && expected_ptr != nullptr && IsKernelVersionAtLeast(4, 17)) {
+    actual = MapInternal(expected_ptr,
+		    page_aligned_byte_count,
+		    prot | MAP_FIXED_NOREPLACE,
+		    flags,
+		    fd.get(),
+		    0,
+		    low_4gb);
+  }
+#endif
+
+  if (actual == nullptr || actual == MAP_FAILED) {
+      actual = MapInternal(expected_ptr,
+		      page_aligned_byte_count,
+		      prot,
+		      flags,
+		      fd.get(),
+		      0,
+		      low_4gb);
+  }
   saved_errno = errno;
 
   if (actual == MAP_FAILED) {
@@ -393,11 +413,8 @@ MemMap* MemMap::MapFileAtAddress(uint8_t* expected_ptr,
     DCHECK(ContainedWithinExistingMap(expected_ptr, byte_count, error_msg))
         << ((error_msg != nullptr) ? *error_msg : std::string());
     flags |= MAP_FIXED;
-#if !defined(ART_TARGET)
-  } else if (expected_ptr) {
-#define MAP_FIXED_NOREPLACE 0x100000
+  } else if (expected_ptr && IsKernelVersionAtLeast(4, 17)) {
       flags |= MAP_FIXED_NOREPLACE;
-#endif
   } else {
     CHECK_EQ(0, flags & MAP_FIXED);
     // Don't bother checking for an overlapping region here. We'll
